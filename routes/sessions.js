@@ -1,7 +1,6 @@
 const express = require("express")
-const supabase = require("../lib/supabase")
-
 const router = express.Router()
+const pool = require('../lib/db'); // MySQL2 connection
 
 // Get all sessions
 router.get("/", async (req, res) => {
