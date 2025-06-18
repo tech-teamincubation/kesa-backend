@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../lib/db"); // MySQL2 connection
 
-// ✅ Get all sessions
+// Get all sessions
 router.get("/", async (req, res) => {
   try {
     const [sessions] = await pool.query("SELECT * FROM sessions ORDER BY date ASC");
@@ -13,7 +13,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ Get single session by ID
+// Get single session by ID
 router.get("/:id", async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT * FROM sessions WHERE id = ?", [req.params.id]);
