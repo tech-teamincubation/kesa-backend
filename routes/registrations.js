@@ -1,117 +1,103 @@
-const express = require("express")
-const jwt = require("jsonwebtoken")
-const supabase = require("../lib/supabase")
+const express = require("express");
+const jwt = require("jsonwebtoken");
+const pool = require("../lib/db"); // ✅ MySQL2 connection
 
-const router = express.Router()
+const router = express.Router();
 
-// Middleware to verify JWT token
+// ✅ Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers["authorization"]
-  const token = authHeader && authHeader.split(" ")[1]
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
-    return res.status(401).json({ message: "Access token required" })
+    return res.status(401).json({ message: "Access token required" });
   }
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
-      return res.status(403).json({ message: "Invalid or expired token" })
+      return res.status(403).json({ message: "Invalid or expired token" });
     }
-    req.user = user
-    next()
-  })
-}
+    req.user = user;
+    next();
+  });
+};
 
-// Register for session
+// ✅ Register for a session
 router.post("/session/:sessionId", authenticateToken, async (req, res) => {
   try {
-    const { sessionId } = req.params
-    const userId = req.user.userId
+    const { sessionId } = req.params;
+    const userId = req.user.userId;
 
     // Check if already registered
-    const { data: existing } = await supabase
-      .from("session_registrations")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("session_id", sessionId)
-      .single()
+    const [existing] = await pool.query(
+      "SELECT id FROM session_registrations WHERE user_id = ? AND session_id = ?",
+      [userId, sessionId]
+    );
 
-    if (existing) {
-      return res.status(409).json({ message: "Already registered for this session" })
+    if (existing.length > 0) {
+      return res.status(409).json({ message: "Already registered for this session" });
     }
 
     // Register for session
-    const { data: registration, error } = await supabase
-      .from("session_registrations")
-      .insert([
-        {
-          user_id: userId,
-          session_id: sessionId,
-          status: "pending",
-        },
-      ])
-      .select()
-      .single()
+    const [result] = await pool.query(
+      "INSERT INTO session_registrations (user_id, session_id, status) VALUES (?, ?, 'pending')",
+      [userId, sessionId]
+    );
 
-    if (error) {
-      console.error("Session registration error:", error)
-      return res.status(500).json({ message: "Registration failed" })
-    }
+    const insertedId = result.insertId;
+
+    const [registrationRows] = await pool.query(
+      "SELECT * FROM session_registrations WHERE id = ?",
+      [insertedId]
+    );
 
     res.status(201).json({
       message: "Successfully registered for session",
-      registration,
-    })
+      registration: registrationRows[0],
+    });
   } catch (error) {
-    console.error("Session registration error:", error)
-    res.status(500).json({ message: "Internal server error" })
+    console.error("Session registration error:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
-})
+});
 
-// Register for course
+// ✅ Register for a course
 router.post("/course/:courseId", authenticateToken, async (req, res) => {
   try {
-    const { courseId } = req.params
-    const userId = req.user.userId
+    const { courseId } = req.params;
+    const userId = req.user.userId;
 
     // Check if already registered
-    const { data: existing } = await supabase
-      .from("course_registrations")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("course_id", courseId)
-      .single()
+    const [existing] = await pool.query(
+      "SELECT id FROM course_registrations WHERE user_id = ? AND course_id = ?",
+      [userId, courseId]
+    );
 
-    if (existing) {
-      return res.status(409).json({ message: "Already registered for this course" })
+    if (existing.length > 0) {
+      return res.status(409).json({ message: "Already registered for this course" });
     }
 
     // Register for course
-    const { data: registration, error } = await supabase
-      .from("course_registrations")
-      .insert([
-        {
-          user_id: userId,
-          course_id: courseId,
-          status: "pending",
-        },
-      ])
-      .select()
-      .single()
+    const [result] = await pool.query(
+      "INSERT INTO course_registrations (user_id, course_id, status) VALUES (?, ?, 'pending')",
+      [userId, courseId]
+    );
 
-    if (error) {
-      console.error("Course registration error:", error)
-      return res.status(500).json({ message: "Registration failed" })
-    }
+    const insertedId = result.insertId;
+
+    const [registrationRows] = await pool.query(
+      "SELECT * FROM course_registrations WHERE id = ?",
+      [insertedId]
+    );
 
     res.status(201).json({
       message: "Successfully registered for course",
-      registration,
-    })
+      registration: registrationRows[0],
+    });
   } catch (error) {
-    console.error("Course registration error:", error)
-    res.status(500).json({ message: "Internal server error" })
+    console.error("Course registration error:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
-})
+});
 
-module.exports = router
+module.exports = router;
