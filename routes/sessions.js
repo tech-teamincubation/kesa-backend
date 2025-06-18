@@ -1,38 +1,32 @@
-const express = require("express")
-const router = express.Router()
-const pool = require('../lib/db'); // MySQL2 connection
+const express = require("express");
+const router = express.Router();
+const pool = require("../lib/db"); // MySQL2 connection
 
-// Get all sessions
+// ✅ Get all sessions
 router.get("/", async (req, res) => {
   try {
-    const { data: sessions, error } = await supabase.from("sessions").select("*").order("date", { ascending: true })
-
-    if (error) {
-      console.error("Sessions fetch error:", error)
-      return res.status(500).json({ message: "Failed to fetch sessions" })
-    }
-
-    res.json(sessions)
+    const [sessions] = await pool.query("SELECT * FROM sessions ORDER BY date ASC");
+    res.json(sessions);
   } catch (error) {
-    console.error("Sessions error:", error)
-    res.status(500).json({ message: "Internal server error" })
+    console.error("Sessions fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch sessions" });
   }
-})
+});
 
-// Get single session
+// ✅ Get single session by ID
 router.get("/:id", async (req, res) => {
   try {
-    const { data: session, error } = await supabase.from("sessions").select("*").eq("id", req.params.id).single()
+    const [rows] = await pool.query("SELECT * FROM sessions WHERE id = ?", [req.params.id]);
 
-    if (error || !session) {
-      return res.status(404).json({ message: "Session not found" })
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Session not found" });
     }
 
-    res.json(session)
+    res.json(rows[0]);
   } catch (error) {
-    console.error("Session fetch error:", error)
-    res.status(500).json({ message: "Internal server error" })
+    console.error("Session fetch error:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
-})
+});
 
-module.exports = router
+module.exports = router;
